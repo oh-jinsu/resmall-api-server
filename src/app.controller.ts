@@ -5,6 +5,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Logger,
   NotFoundException,
   Param,
@@ -12,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
+import { AuthService } from './auth.service';
 import { JobService } from './job.service';
 
 @Controller()
@@ -22,6 +24,7 @@ export class AppController {
 
   constructor(
     private readonly appService: JobService,
+    private readonly authService: AuthService,
     private readonly schedulerRegistry: SchedulerRegistry,
   ) {}
 
@@ -42,17 +45,26 @@ export class AppController {
   }
 
   @Post('/execute')
-  execute() {
+  execute(@Headers('Authorization') auth: string) {
+    this.authService.assert(auth);
+
     return this.appService.execute();
   }
 
   @Post('/execute/:id')
-  executeOne(@Param('id') id: string) {
+  executeOne(@Headers('Authorization') auth: string, @Param('id') id: string) {
+    this.authService.assert(auth);
+
     return this.appService.executeOne(id);
   }
 
   @Post('/job')
-  post(@Body() { cron }: { cron: string }) {
+  post(
+    @Headers('Authorization') auth: string,
+    @Body() { cron }: { cron: string },
+  ) {
+    this.authService.assert(auth);
+
     if (this.schedulerRegistry.doesExist('cron', 'job')) {
       throw new ConflictException('이미 작업이 실행중입니다.');
     }
@@ -80,7 +92,9 @@ export class AppController {
   }
 
   @Delete('/job')
-  delete() {
+  delete(@Headers('Authorization') auth: string) {
+    this.authService.assert(auth);
+
     if (!this.schedulerRegistry.doesExist('cron', 'job')) {
       throw new NotFoundException('해제할 작업이 없습니다.');
     }

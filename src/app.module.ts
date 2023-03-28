@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
+import { AuthService } from './auth.service';
 import { ItemEntity } from './item.entity';
 import { JobService } from './job.service';
 
@@ -26,6 +27,6 @@ import { JobService } from './job.service';
     HttpModule,
   ],
   controllers: [AppController],
-  providers: [JobService],
+  providers: [JobService, AuthService],
 })
 export class AppModule {}
