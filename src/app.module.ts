@@ -4,8 +4,8 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { ScheduleService } from './schedule.service';
+import { ItemEntity } from './item.entity';
+import { JobService } from './job.service';
 
 @Module({
   imports: [
@@ -13,7 +13,6 @@ import { ScheduleService } from './schedule.service';
       envFilePath: ['.env'],
     }),
     ScheduleModule.forRoot(),
-    HttpModule,
     TypeOrmModule.forRoot({
       type: 'mariadb',
       host: process.env.DB_HOST,
@@ -21,11 +20,12 @@ import { ScheduleService } from './schedule.service';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
-      synchronize: process.env.NODE_ENV?.startsWith('dev'),
-      entities: [],
+      entities: [ItemEntity],
     }),
+    TypeOrmModule.forFeature([ItemEntity]),
+    HttpModule,
   ],
   controllers: [AppController],
-  providers: [AppService, ScheduleService],
+  providers: [JobService],
 })
 export class AppModule {}
