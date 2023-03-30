@@ -1,6 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import {
   ConflictException,
+  HttpException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -122,7 +123,9 @@ export class JobService {
         ),
     );
 
-    this.logger.log(data);
+    if ((data['Error']?.['Message'] as string | undefined)?.includes('초과')) {
+      throw new HttpException('허용량을 초과했습니다.', 429);
+    }
 
     const items = data['Data']?.['Result'];
 
