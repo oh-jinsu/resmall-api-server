@@ -29,11 +29,11 @@ export class AppController {
   ) {}
 
   @Get('/issue')
-  issue(@Headers('Authorization') auth: string) {
+  async issue(@Headers('Authorization') auth: string) {
     this.authService.assert(auth);
 
     return {
-      sessionId: this.authService.getSessionId(),
+      sessionId: await this.authService.getSessionId(),
     };
   }
 
