@@ -32,7 +32,9 @@ export class AppController {
   issue(@Headers('Authorization') auth: string) {
     this.authService.assert(auth);
 
-    return this.authService.getSessionId();
+    return {
+      sessionId: this.authService.getSessionId(),
+    };
   }
 
   @Get('/health')
