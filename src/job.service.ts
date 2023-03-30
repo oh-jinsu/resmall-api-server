@@ -122,7 +122,9 @@ export class JobService {
         ),
     );
 
-    const items = data['Data']['Result'];
+    this.logger.log(data);
+
+    const items = data['Data']?.['Result'];
 
     if (!Array.isArray(items) || items.length === 0) {
       throw new ConflictException('등록한 재고가 없습니다.');
