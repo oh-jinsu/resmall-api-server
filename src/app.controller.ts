@@ -23,10 +23,17 @@ export class AppController {
   private readonly logger = new Logger(AppController.name);
 
   constructor(
-    private readonly appService: JobService,
+    private readonly jobService: JobService,
     private readonly authService: AuthService,
     private readonly schedulerRegistry: SchedulerRegistry,
   ) {}
+
+  @Get('/issue')
+  issue(@Headers('Authorization') auth: string) {
+    this.authService.assert(auth);
+
+    return this.authService.getSessionId();
+  }
 
   @Get('/health')
   health() {
@@ -48,14 +55,14 @@ export class AppController {
   execute(@Headers('Authorization') auth: string) {
     this.authService.assert(auth);
 
-    return this.appService.execute();
+    return this.jobService.execute();
   }
 
   @Post('/execute/:id')
   executeOne(@Headers('Authorization') auth: string, @Param('id') id: string) {
     this.authService.assert(auth);
 
-    return this.appService.executeOne(id);
+    return this.jobService.executeOne(id);
   }
 
   @Post('/job')
@@ -75,7 +82,7 @@ export class AppController {
 
     const job = new CronJob(
       cron,
-      () => this.appService.execute(),
+      () => this.jobService.execute(),
       undefined,
       true,
       this.zone,
