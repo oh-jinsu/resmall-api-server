@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { catchError, firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
+import { AuthService } from './auth.service';
 import { ItemEntity } from './item.entity';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class JobService {
   private readonly logger = new Logger(JobService.name);
 
   constructor(
+    private readonly authService: AuthService,
     private readonly httpService: HttpService,
     @InjectRepository(ItemEntity)
     private readonly itemRepository: Repository<ItemEntity>,
@@ -22,7 +24,7 @@ export class JobService {
 
   async executeOne(id: string) {
     return this.withCatch(async () => {
-      const sessionId = await this.fetchSessionId();
+      const sessionId = await this.authService.getSessionId();
 
       const item = await this.getItem(id, sessionId);
 
@@ -32,7 +34,7 @@ export class JobService {
 
   async execute() {
     return this.withCatch(async () => {
-      const sessionId = await this.fetchSessionId();
+      const sessionId = await this.authService.getSessionId();
 
       const items = await this.getItems(sessionId);
 
@@ -81,28 +83,6 @@ export class JobService {
         id,
       },
     });
-  }
-
-  private async fetchSessionId() {
-    const { data: auth } = await firstValueFrom(
-      this.httpService
-        .post(process.env.URL_ERP_LOGIN, {
-          COM_CODE: process.env.COM_CODE,
-          USER_ID: process.env.USER_ID,
-          API_CERT_KEY: process.env.API_CERT_KEY,
-          LAN_TYPE: process.env.LAN_TYPE,
-          ZONE: process.env.ZONE,
-        })
-        .pipe(
-          catchError((error) => {
-            this.logger.error(error.response.data);
-
-            throw new InternalServerErrorException(error.response.data);
-          }),
-        ),
-    );
-
-    return auth['Data']['Datas']['SESSION_ID'];
   }
 
   private async getItem(id: string, sessionId: string) {
