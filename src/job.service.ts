@@ -64,9 +64,7 @@ export class JobService {
         return this.withCatch(fn, count - 1);
       }
 
-      throw new InternalServerErrorException(
-        '일시적인 오류입니다. 잠시 후 다시 시도해 주세요.',
-      );
+      throw e;
     }
   }
 
@@ -129,13 +127,19 @@ export class JobService {
 
   private async fetchItems(url: string, body: any) {
     const { data } = await firstValueFrom(
-      this.httpService.post(url, body).pipe(
-        catchError((error) => {
-          this.logger.error(error.response.data);
+      this.httpService
+        .post(url, body, {
+          headers: {
+            'Content-Type': `application/json`,
+          },
+        })
+        .pipe(
+          catchError((error) => {
+            this.logger.error(error.response.data);
 
-          throw new InternalServerErrorException(error.response.data);
-        }),
-      ),
+            throw new InternalServerErrorException(error.response.data);
+          }),
+        ),
     );
 
     const items = data['Data']['Result'];
