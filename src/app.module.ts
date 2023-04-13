@@ -7,6 +7,7 @@ import { AppController } from './app.controller';
 import { AuthService } from './auth.service';
 import { ItemEntity } from './item.entity';
 import { JobService } from './job.service';
+import { ItemOptionEntity } from './item_option.entity';
 
 @Module({
   imports: [
@@ -21,9 +22,9 @@ import { JobService } from './job.service';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
-      entities: [ItemEntity],
+      entities: [ItemEntity, ItemOptionEntity],
     }),
-    TypeOrmModule.forFeature([ItemEntity]),
+    TypeOrmModule.forFeature([ItemEntity, ItemOptionEntity]),
     HttpModule,
   ],
   controllers: [AppController],

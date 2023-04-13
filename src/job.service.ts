@@ -11,6 +11,7 @@ import { catchError, firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { AuthService } from './auth.service';
 import { ItemEntity } from './item.entity';
+import { ItemOptionEntity } from './item_option.entity';
 
 @Injectable()
 export class JobService {
@@ -21,6 +22,8 @@ export class JobService {
     private readonly httpService: HttpService,
     @InjectRepository(ItemEntity)
     private readonly itemRepository: Repository<ItemEntity>,
+    @InjectRepository(ItemOptionEntity)
+    private readonly itemOptionRepository: Repository<ItemOptionEntity>,
   ) {}
 
   async executeOne(id: string) {
@@ -71,9 +74,30 @@ export class JobService {
     }
   }
 
-  private async updateQuantity(id: string, quantity: number) {
+  private async updateQuantity(prodCd: string, quantity: number) {
+    if (prodCd.includes('-')) {
+      const [itemId, optionId] = prodCd.split('-');
+
+      await this.itemOptionRepository.update(
+        {
+          id: optionId,
+          itemId,
+        },
+        {
+          quantity,
+        },
+      );
+
+      return this.itemOptionRepository.findOne({
+        where: {
+          id: optionId,
+          itemId,
+        },
+      });
+    }
+
     await this.itemRepository.update(
-      { id },
+      { id: prodCd },
       {
         quantity,
       },
@@ -81,7 +105,7 @@ export class JobService {
 
     return this.itemRepository.findOne({
       where: {
-        id,
+        id: prodCd,
       },
     });
   }
