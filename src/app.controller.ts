@@ -85,7 +85,7 @@ export class AppController {
     const job = new CronJob(
       cron,
       () => {
-        this.logger.log('Hey!');
+        this.logger.log(cron);
         // this.jobService.execute();
       },
       undefined,
