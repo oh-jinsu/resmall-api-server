@@ -84,11 +84,15 @@ export class AppController {
 
     const job = new CronJob(
       cron,
-      () => this.jobService.execute(),
+      () => {
+        this.jobService.execute();
+      },
       undefined,
-      true,
+      false,
       this.zone,
     );
+
+    job.start();
 
     this.schedulerRegistry.addCronJob('job', job);
 
