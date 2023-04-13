@@ -85,7 +85,11 @@ export class AppController {
     const job = new CronJob(
       cron,
       () => {
-        this.jobService.execute();
+        try {
+          this.jobService.execute();
+        } catch (e) {
+          this.logger.error(e);
+        }
       },
       undefined,
       true,
