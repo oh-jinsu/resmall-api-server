@@ -45,40 +45,23 @@ export class JobService {
   async execute() {
     this.logger.log('작업을 시작합니다.');
 
-    const itemss = await this.itemRepository.find();
-
-    console.log(itemss);
-
-    // await Promise.all(
-    //   itemss.map(async (item) =>
-    //     this.itemRepository.update(
-    //       {
-    //         id: item.id,
-    //       },
-    //       {
-    //         quantity: 9999,
-    //       },
-    //     ),
-    //   ),
-    // );
-
     const sessionId = await this.authService.getSessionId();
 
     const items = await this.getItems(sessionId);
 
     this.logger.log(items);
 
-    // const result = await Promise.all(
-    //   items.map(async ({ PROD_CD, BAL_QTY }) =>
-    //     this.updateQuantity(PROD_CD, BAL_QTY),
-    //   ),
-    // );
+    const result = await Promise.all(
+      items.map(async ({ PROD_CD, BAL_QTY }) =>
+        this.updateQuantity(PROD_CD, BAL_QTY),
+      ),
+    );
 
-    // this.logger.log(JSON.stringify(result));
+    this.logger.log(JSON.stringify(result));
 
-    // this.logger.log('재고를 갱신했습니다.');
+    this.logger.log('재고를 갱신했습니다.');
 
-    // return result;
+    return result;
   }
 
   private async updateQuantity(prodCd: string, quantity: number) {
