@@ -47,18 +47,20 @@ export class JobService {
 
     const itemss = await this.itemRepository.find();
 
-    await Promise.all(
-      itemss.map(async (item) =>
-        this.itemRepository.update(
-          {
-            id: item.id,
-          },
-          {
-            quantity: 9999,
-          },
-        ),
-      ),
-    );
+    console.log(itemss);
+
+    // await Promise.all(
+    //   itemss.map(async (item) =>
+    //     this.itemRepository.update(
+    //       {
+    //         id: item.id,
+    //       },
+    //       {
+    //         quantity: 9999,
+    //       },
+    //     ),
+    //   ),
+    // );
 
     const sessionId = await this.authService.getSessionId();
 
