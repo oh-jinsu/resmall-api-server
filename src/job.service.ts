@@ -27,51 +27,35 @@ export class JobService {
   ) {}
 
   async executeOne(id: string) {
-    return this.withCatch(async () => {
-      const sessionId = await this.authService.getSessionId();
+    const sessionId = await this.authService.getSessionId();
 
-      const item = await this.getItem(id, sessionId);
+    const item = await this.getItem(id, sessionId);
 
-      return this.updateQuantity(item['PROD_CD'], item['BAL_QTY']);
-    });
+    const result = this.updateQuantity(item['PROD_CD'], item['BAL_QTY']);
+
+    this.logger.log(JSON.stringify(result));
+
+    this.logger.log('재고를 갱신했습니다.');
+
+    return result;
   }
 
   async execute() {
-    return this.withCatch(async () => {
-      const sessionId = await this.authService.getSessionId();
+    const sessionId = await this.authService.getSessionId();
 
-      const items = await this.getItems(sessionId);
+    const items = await this.getItems(sessionId);
 
-      return await Promise.all(
-        items.map(async ({ PROD_CD, BAL_QTY }) =>
-          this.updateQuantity(PROD_CD, BAL_QTY),
-        ),
-      );
-    });
-  }
+    const result = await Promise.all(
+      items.map(async ({ PROD_CD, BAL_QTY }) =>
+        this.updateQuantity(PROD_CD, BAL_QTY),
+      ),
+    );
 
-  private async withCatch<T>(fn: () => Promise<T>, count = 5): Promise<T> {
-    try {
-      const result = await fn();
+    this.logger.log(JSON.stringify(result));
 
-      this.logger.log('재고를 갱신했습니다.');
+    this.logger.log('재고를 갱신했습니다.');
 
-      this.logger.log(JSON.stringify(result));
-
-      return result;
-    } catch (e) {
-      this.logger.error(e);
-
-      if (count > 0 && e instanceof InternalServerErrorException) {
-        this.logger.log('다시 요청을 시도합니다.');
-
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        return this.withCatch(fn, count - 1);
-      }
-
-      throw e;
-    }
+    return result;
   }
 
   private async updateQuantity(prodCd: string, quantity: number) {
@@ -131,20 +115,22 @@ export class JobService {
   }
 
   private async fetchItems(url: string, body: any) {
-    const { data } = await firstValueFrom(
-      this.httpService
-        .post(url, body, {
-          headers: {
-            'Content-Type': `application/json`,
-          },
-        })
-        .pipe(
-          catchError((error) => {
-            this.logger.error(error.response.data);
+    const { data } = await this.withCatch(() =>
+      firstValueFrom(
+        this.httpService
+          .post(url, body, {
+            headers: {
+              'Content-Type': `application/json`,
+            },
+          })
+          .pipe(
+            catchError((error) => {
+              this.logger.error(error.response.data);
 
-            throw new InternalServerErrorException(error.response.data);
-          }),
-        ),
+              throw new InternalServerErrorException(error.response.data);
+            }),
+          ),
+      ),
     );
 
     if ((data['Error']?.['Message'] as string | undefined)?.includes('초과')) {
@@ -158,6 +144,26 @@ export class JobService {
     }
 
     return items;
+  }
+
+  private async withCatch<T>(fn: () => Promise<T>, count = 5): Promise<T> {
+    try {
+      const result = await fn();
+
+      return result;
+    } catch (e) {
+      this.logger.error(e);
+
+      if (count > 0 && e instanceof InternalServerErrorException) {
+        this.logger.log('다시 요청을 시도합니다.');
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        return this.withCatch(fn, count - 1);
+      }
+
+      throw e;
+    }
   }
 
   private getToday(): string {
