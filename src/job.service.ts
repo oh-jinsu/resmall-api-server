@@ -5,6 +5,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { catchError, firstValueFrom } from 'rxjs';
@@ -127,7 +128,7 @@ export class JobService {
             catchError((error) => {
               this.logger.error(error.response.data);
 
-              throw new InternalServerErrorException(error.response.data);
+              throw new ServiceUnavailableException(error.response.data);
             }),
           ),
       ),
@@ -154,7 +155,7 @@ export class JobService {
     } catch (e) {
       this.logger.error(e);
 
-      if (count > 0 && e instanceof InternalServerErrorException) {
+      if (count > 0 && e instanceof ServiceUnavailableException) {
         this.logger.log('다시 요청을 시도합니다.');
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
