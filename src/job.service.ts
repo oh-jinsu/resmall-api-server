@@ -28,6 +28,8 @@ export class JobService {
   ) {}
 
   async executeOne(id: string) {
+    this.logger.log('작업을 시작합니다.');
+
     const sessionId = await this.authService.getSessionId();
 
     const item = await this.getItem(id, sessionId);
@@ -42,6 +44,8 @@ export class JobService {
   }
 
   async execute() {
+    this.logger.log('작업을 시작합니다.');
+
     const sessionId = await this.authService.getSessionId();
 
     const items = await this.getItems(sessionId);
@@ -158,7 +162,7 @@ export class JobService {
       if (count > 0 && e instanceof ServiceUnavailableException) {
         this.logger.log('다시 요청을 시도합니다.');
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 3000));
 
         return this.withCatch(fn, count - 1);
       }
