@@ -13,6 +13,11 @@ import { AuthService } from './auth.service';
 import { ItemEntity } from './item.entity';
 import { ItemOptionEntity } from './item_option.entity';
 
+type Stock = {
+  readonly code: string;
+  readonly quantity: number;
+};
+
 @Injectable()
 export class JobService {
   private readonly logger = new Logger(JobService.name);
@@ -26,14 +31,32 @@ export class JobService {
     private readonly itemOptionRepository: Repository<ItemOptionEntity>,
   ) {}
 
-  async executeOne(id: string) {
+  async executeOne(itemId: string) {
     this.logger.log('작업을 시작합니다.');
 
-    const sessionId = await this.authService.getSessionId();
+    const result = [];
 
-    const item = await this.getItem(id, sessionId);
+    const updateAndPushIfExists = async (code: string) => {
+      const stock = await this.getStock(code);
 
-    const result = this.updateQuantity(item['PROD_CD'], item['BAL_QTY']);
+      if (stock) {
+        result.push(await this.updateQuantityByCode(stock));
+      }
+    };
+
+    await updateAndPushIfExists(itemId);
+
+    const itemOptions = await this.itemOptionRepository.find({
+      where: {
+        itemId,
+      },
+    });
+
+    for (const element of itemOptions) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      await updateAndPushIfExists(`${itemId}-${element.id}`);
+    }
 
     this.logger.log(JSON.stringify(result));
 
@@ -45,16 +68,10 @@ export class JobService {
   async execute() {
     this.logger.log('작업을 시작합니다.');
 
-    const sessionId = await this.authService.getSessionId();
-
-    const items = await this.getItems(sessionId);
-
-    this.logger.log(items);
+    const stocks = await this.getStocks();
 
     const result = await Promise.all(
-      items.map(async ({ PROD_CD, BAL_QTY }) =>
-        this.updateQuantity(PROD_CD, BAL_QTY),
-      ),
+      stocks.map((stock) => this.updateQuantityByCode(stock)),
     );
 
     this.logger.log(JSON.stringify(result));
@@ -64,9 +81,9 @@ export class JobService {
     return result;
   }
 
-  private async updateQuantity(prodCd: string, quantity: number) {
-    if (prodCd.includes('-')) {
-      const [itemId, optionId] = prodCd.split('-');
+  private async updateQuantityByCode({ code, quantity }: Stock) {
+    if (code.includes('-')) {
+      const [itemId, optionId] = code.split('-');
 
       await this.itemOptionRepository.update(
         {
@@ -87,7 +104,7 @@ export class JobService {
     }
 
     await this.itemRepository.update(
-      { id: prodCd },
+      { id: code },
       {
         quantity,
       },
@@ -95,36 +112,50 @@ export class JobService {
 
     return this.itemRepository.findOne({
       where: {
-        id: prodCd,
+        id: code,
       },
     });
   }
 
-  private async getItem(id: string, sessionId: string) {
-    const url = `${process.env.URL_ERP_INVENTORY}?SESSION_ID=${sessionId}`;
-
+  private async getStock(id: string): Promise<Stock | undefined> {
     const body = { PROD_CD: id, BASE_DATE: this.getToday() };
 
-    const items = await this.fetchItems(url, body);
+    const items = await this.fetchStocksFromAPI(
+      process.env.URL_ERP_INVENTORY,
+      body,
+    );
 
-    return items[0];
+    if (items.length === 0) {
+      return undefined;
+    }
+
+    const result = items[0];
+
+    if (result.quantity > 0) {
+      return result;
+    }
+
+    return undefined;
   }
 
-  private async getItems(sessionId: string) {
-    const url = `${process.env.URL_ERP_INVENTORY_LIST}?SESSION_ID=${sessionId}`;
-
+  private async getStocks(): Promise<Stock[]> {
     const body = { BASE_DATE: this.getToday() };
 
-    const items = await this.fetchItems(url, body);
+    const items = await this.fetchStocksFromAPI(
+      process.env.URL_ERP_INVENTORY_LIST,
+      body,
+    );
 
-    return items;
+    return items.filter((item) => item.quantity > 0);
   }
 
-  private async fetchItems(url: string, body: any) {
+  private async fetchStocksFromAPI(url: string, body: any): Promise<Stock[]> {
+    const sessionId = await this.authService.getSessionId();
+
     const { data } = await this.withCatch(() =>
       firstValueFrom(
         this.httpService
-          .post(url, body, {
+          .post(`${url}?SESSION_ID=${sessionId}`, body, {
             headers: {
               'Content-Type': `application/json`,
             },
@@ -145,11 +176,14 @@ export class JobService {
 
     const items = data['Data']?.['Result'];
 
-    if (!Array.isArray(items) || items.length === 0) {
+    if (!Array.isArray(items)) {
       throw new ConflictException('등록한 재고가 없습니다.');
     }
 
-    return items;
+    return items.map(({ PROD_CD, BAL_QTY }) => ({
+      code: PROD_CD,
+      quantity: BAL_QTY,
+    }));
   }
 
   private async withCatch<T>(fn: () => Promise<T>, count = 5): Promise<T> {
