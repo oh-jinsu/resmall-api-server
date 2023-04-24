@@ -55,7 +55,9 @@ export class JobService {
     for (const element of itemOptions) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      await updateAndPushIfExists(`${itemId}-${element.id}`);
+      // await updateAndPushIfExists(`${itemId}-${element.id}`);
+
+      await updateAndPushIfExists(element.id);
     }
 
     this.logger.log(JSON.stringify(result));
@@ -82,12 +84,12 @@ export class JobService {
   }
 
   private async updateQuantityByCode({ code, quantity }: Stock) {
-    if (code.includes('-')) {
-      const [itemId, optionId] = code.split('-');
+    if (code.length > 10) {
+      const itemId = code.substring(0, 10);
 
       await this.itemOptionRepository.update(
         {
-          id: optionId,
+          id: code,
           itemId,
         },
         {
@@ -97,7 +99,7 @@ export class JobService {
 
       return this.itemOptionRepository.findOne({
         where: {
-          id: optionId,
+          id: code,
           itemId,
         },
       });
